@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Msg = { role: "user" | "assistant"; text: string };
 
@@ -9,6 +9,37 @@ export default function ChatPanel() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const recognitionRef = useRef<any>(null);
+
+  // 🎤 Voice recognition setup
+  useEffect(() => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      const recog = new SpeechRecognition();
+      recog.lang = "en-IN";
+      recog.continuous = false;
+      recog.interimResults = false;
+
+      recog.onresult = (e: any) => {
+        const text = e.results[0][0].transcript;
+        setInput(text);
+      };
+
+      recognitionRef.current = recog;
+    }
+  }, []);
+
+  // 🔊 Speak function
+  const speak = (text: string) => {
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "en-IN";
+    utter.rate = 1;
+    speechSynthesis.speak(utter);
+  };
 
   const send = async () => {
     if (!input.trim() || loading) return;
@@ -27,15 +58,14 @@ export default function ChatPanel() {
       });
 
       const data = await res.json();
+      const reply = data.reply || "No reply";
 
+      setMessages((m) => [...m, { role: "assistant", text: reply }]);
+      speak(reply); // 🔊 AI speaks
+    } catch {
       setMessages((m) => [
         ...m,
-        { role: "assistant", text: data.reply || "No reply" },
-      ]);
-    } catch (err) {
-      setMessages((m) => [
-        ...m,
-        { role: "assistant", text: "❌ Backend connect nahi ho paaya" },
+        { role: "assistant", text: "❌ Backend connect error" },
       ]);
     } finally {
       setLoading(false);
@@ -51,18 +81,14 @@ export default function ChatPanel() {
         background: "var(--panel)",
         border: "1px solid var(--line)",
         borderRadius: 22,
-        backdropFilter: "blur(10px)",
         display: "grid",
         gridTemplateRows: "60px 1fr 70px",
-        boxShadow: "0 0 60px rgba(20,120,255,.15)",
       }}
     >
-      {/* header */}
       <div style={{ padding: 16, fontWeight: 700 }}>
-        🤖 Mukul Assistant — JARVIS MODE
+        🤖 Mukul Assistant — JARVIS VOICE MODE
       </div>
 
-      {/* messages */}
       <div style={{ padding: 16, overflowY: "auto" }}>
         {messages.map((m, i) => (
           <div
@@ -83,25 +109,32 @@ export default function ChatPanel() {
                     ? "rgba(90,220,255,.18)"
                     : "rgba(255,255,255,.05)",
                 border: "1px solid var(--line)",
-                boxShadow: "0 0 20px rgba(90,220,255,.12)",
-                whiteSpace: "pre-wrap",
               }}
             >
               {m.text}
             </div>
           </div>
         ))}
-        {loading && (
-          <div style={{ opacity: 0.7 }}>Jarvis soch raha hai…</div>
-        )}
+        {loading && <div>Jarvis soch raha hai…</div>}
       </div>
 
-      {/* input */}
       <div style={{ display: "flex", gap: 10, padding: 12 }}>
+        <button
+          onClick={() => recognitionRef.current?.start()}
+          style={{
+            padding: "0 16px",
+            borderRadius: 14,
+            border: "1px solid var(--line)",
+            background: "rgba(90,220,255,.25)",
+          }}
+        >
+          🎤
+        </button>
+
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type message…"
+          placeholder="Speak or type..."
           style={{
             flex: 1,
             padding: 14,
@@ -109,21 +142,18 @@ export default function ChatPanel() {
             border: "1px solid var(--line)",
             background: "rgba(0,0,0,.25)",
             color: "var(--text)",
-            outline: "none",
           }}
         />
+
         <button
           onClick={send}
           disabled={loading}
           style={{
-            padding: "14px 18px",
+            padding: "0 18px",
             borderRadius: 14,
             border: "1px solid var(--line)",
             background: "rgba(90,220,255,.2)",
-            color: "var(--text)",
             fontWeight: 700,
-            cursor: "pointer",
-            opacity: loading ? 0.6 : 1,
           }}
         >
           Send
