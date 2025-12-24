@@ -1,8 +1,18 @@
+import JarvisBackground from "@/components/JarvisBackground";
+import ChatPanel from "@/components/ChatPanel";
+
 export default function Page() {
   return (
-    <main>
-      <h1>🤖 Mukul Assistant</h1>
-      <p>Jarvis-style UI loading...</p>
+    <main
+      style={{
+        position: "relative",
+        height: "100vh",
+        display: "grid",
+        placeItems: "center",
+      }}
+    >
+      <JarvisBackground />
+      <ChatPanel />
     </main>
   );
 }
