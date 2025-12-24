@@ -1,24 +1,40 @@
-"""
-Mukul Assistant – AI Agent
-AI plug-in ready (OpenAI / Ollama later)
-"""
+import os
+import httpx
+from dotenv import load_dotenv
+
+load_dotenv()
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+
+SYSTEM_PROMPT = (
+    "You are Mukul Assistant, an AI inspired by Iron Man JARVIS. "
+    "You help with coding, projects, learning, and automation."
+)
 
 async def run_agent(message: str):
-    message = message.lower().strip()
+    if not OPENAI_API_KEY:
+        return "❌ OpenAI API key missing. backend/.env file check karo."
 
-    if "hello" in message or "hi" in message:
-        return "Hello Mukul 👋 Main aapka Assistant hoon. Batao kya kaam hai?"
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
-    if "project" in message:
-        return "Main project banana, code likhna aur test karna janta hoon."
+    payload = {
+        "model": MODEL_NAME,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": message}
+        ],
+        "temperature": 0.4
+    }
 
-    if "help" in message:
-        return (
-            "Main ye kaam kar sakta hoon:\n"
-            "- Web / App project banana\n"
-            "- Code likhna\n"
-            "- Testing\n"
-            "- Aage chalke video editing & automation\n"
-        )
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.post(url, headers=headers, json=payload)
+        if r.status_code != 200:
+            return f"❌ OpenAI error: {r.text}"
 
-    return f"Samjha 👍 Aapne bola: {message}\n(Real AI next stage me add hoga)"
+        data = r.json()
+        return data["choices"][0]["message"]["content"]
