@@ -8,12 +8,38 @@ export default function ChatPanel() {
     { role: "assistant", text: "Hello Mukul 👋 Main aapka JARVIS Assistant hoon." },
   ]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const send = () => {
-    if (!input.trim()) return;
-    setMessages((m) => [...m, { role: "user", text: input }]);
-    setMessages((m) => [...m, { role: "assistant", text: "AI reply yahan aayega (connected already 🔥)" }]);
+  const send = async () => {
+    if (!input.trim() || loading) return;
+
+    const userText = input;
     setInput("");
+    setLoading(true);
+
+    setMessages((m) => [...m, { role: "user", text: userText }]);
+
+    try {
+      const res = await fetch("http://localhost:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userText }),
+      });
+
+      const data = await res.json();
+
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", text: data.reply || "No reply" },
+      ]);
+    } catch (err) {
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", text: "❌ Backend connect nahi ho paaya" },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -65,6 +91,9 @@ export default function ChatPanel() {
             </div>
           </div>
         ))}
+        {loading && (
+          <div style={{ opacity: 0.7 }}>Jarvis soch raha hai…</div>
+        )}
       </div>
 
       {/* input */}
@@ -72,7 +101,7 @@ export default function ChatPanel() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type command… (e.g. web project banao)"
+          placeholder="Type message…"
           style={{
             flex: 1,
             padding: 14,
@@ -85,6 +114,7 @@ export default function ChatPanel() {
         />
         <button
           onClick={send}
+          disabled={loading}
           style={{
             padding: "14px 18px",
             borderRadius: 14,
@@ -93,6 +123,7 @@ export default function ChatPanel() {
             color: "var(--text)",
             fontWeight: 700,
             cursor: "pointer",
+            opacity: loading ? 0.6 : 1,
           }}
         >
           Send
